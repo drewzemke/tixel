@@ -8,3 +8,4 @@ edition = "2024"
 [dev-dependencies]
 anyhow = "1.0.102"
 crossterm = "0.29.0"
+rand = "0.10"

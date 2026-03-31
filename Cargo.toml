@@ -7,5 +7,10 @@ edition = "2024"
 
 [dev-dependencies]
 anyhow = "1.0.102"
+criterion = { version = "0.8.2", features = ["html_reports"] }
 crossterm = "0.29.0"
 rand = "0.10"
+
+[[bench]]
+name = "render"
+harness = false

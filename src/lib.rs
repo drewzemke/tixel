@@ -1,3 +1,5 @@
+use std::fmt::Write;
+
 const UPPER_HALF_CELL: char = '▀';
 
 #[derive(Debug, Default, Clone, Copy)]
@@ -44,7 +46,8 @@ impl HalfCellCanvas {
     }
 
     pub fn render(&self) -> String {
-        let mut out = String::new();
+        // NOTE: estimating 40 bytes worse case for a foreground+background+half-cell output
+        let mut out = String::with_capacity(self.width() * self.height() * 40);
         out.push_str(&format!("\x1b[{};{}H", 0, 0));
 
         for row in 0..self.terminal_rows {
@@ -52,23 +55,23 @@ impl HalfCellCanvas {
                 let top_color = self.pixels[2 * row][col];
                 let bottom_color = self.pixels[2 * row + 1][col];
 
-                let fg_str = if let Some(top_color) = top_color {
-                    format!("\x1b[38;2;{};{};{}m", top_color.0, top_color.1, top_color.2)
-                } else {
-                    String::new()
+                if let Some(top_color) = top_color {
+                    let _ = write!(
+                        &mut out,
+                        "\x1b[38;2;{};{};{}m",
+                        top_color.0, top_color.1, top_color.2
+                    );
                 };
 
-                let bg_str = if let Some(bottom_color) = bottom_color {
-                    format!(
+                if let Some(bottom_color) = bottom_color {
+                    let _ = write!(
+                        &mut out,
                         "\x1b[48;2;{};{};{}m",
                         bottom_color.0, bottom_color.1, bottom_color.2
-                    )
-                } else {
-                    String::new()
+                    );
                 };
 
-                let cell = format!("{fg_str}{bg_str}{UPPER_HALF_CELL}");
-                out.push_str(&cell);
+                let _ = write!(&mut out, "{UPPER_HALF_CELL}");
             }
         }
 

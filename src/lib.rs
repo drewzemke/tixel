@@ -2,7 +2,7 @@ use std::fmt::Write;
 
 const UPPER_HALF_CELL: char = '▀';
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct Color(u8, u8, u8);
 
 impl Color {
@@ -50,25 +50,46 @@ impl HalfCellCanvas {
         let mut out = String::with_capacity(self.width() * self.height() * 40);
         out.push_str(&format!("\x1b[{};{}H", 0, 0));
 
+        let mut current_top: Option<Color> = None;
+        let mut current_bottom: Option<Color> = None;
+
         for row in 0..self.terminal_rows {
             for col in 0..self.terminal_cols {
                 let top_color = self.pixels[2 * row][col];
                 let bottom_color = self.pixels[2 * row + 1][col];
 
                 if let Some(top_color) = top_color {
-                    let _ = write!(
-                        &mut out,
-                        "\x1b[38;2;{};{};{}m",
-                        top_color.0, top_color.1, top_color.2
-                    );
+                    if current_top.is_none_or(|c| c != top_color) {
+                        let _ = write!(
+                            &mut out,
+                            "\x1b[38;2;{};{};{}m",
+                            top_color.0, top_color.1, top_color.2
+                        );
+                        current_top = Some(top_color);
+                    };
+                } else {
+                    if current_top.is_some() {
+                        // reset foreground
+                        let _ = write!(&mut out, "\x1b[39m",);
+                        current_top = None;
+                    }
                 };
 
                 if let Some(bottom_color) = bottom_color {
-                    let _ = write!(
-                        &mut out,
-                        "\x1b[48;2;{};{};{}m",
-                        bottom_color.0, bottom_color.1, bottom_color.2
-                    );
+                    if current_bottom.is_none_or(|c| c != bottom_color) {
+                        let _ = write!(
+                            &mut out,
+                            "\x1b[48;2;{};{};{}m",
+                            bottom_color.0, bottom_color.1, bottom_color.2
+                        );
+                        current_bottom = Some(bottom_color);
+                    }
+                } else {
+                    if current_bottom.is_some() {
+                        // reset background
+                        let _ = write!(&mut out, "\x1b[49m",);
+                        current_bottom = None;
+                    }
                 };
 
                 let _ = write!(&mut out, "{UPPER_HALF_CELL}");

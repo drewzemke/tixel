@@ -48,7 +48,8 @@ struct SnakeGame {
 
 impl SnakeGame {
     fn new(width: i64, height: i64) -> Self {
-        let snake = vec![(width / 2, height / 2)].into();
+        let center = (width / 2, height / 2);
+        let snake = vec![center, (center.0 - 1, center.1), (center.0 - 2, center.1)].into();
         Self {
             width,
             height,
@@ -131,28 +132,33 @@ fn main() -> anyhow::Result<()> {
     execute!(stdout, EnterAlternateScreen, Hide, Clear(ClearType::All))?;
 
     let mut running = true;
+    let mut quitting = false;
 
     let mut board = SnakeGame::new(width as i64, height as i64);
 
     loop {
         let frame_start = Instant::now();
 
-        if event::poll(Duration::from_millis(10))?
-            && let Event::Key(KeyEvent { code, .. }) = event::read()?
-        {
-            match code {
-                KeyCode::Char('q') => break,
-                KeyCode::Char(' ') => running = !running,
-                KeyCode::Up => board.turn(Dir::Up),
-                KeyCode::Down => board.turn(Dir::Down),
-                KeyCode::Left => board.turn(Dir::Left),
-                KeyCode::Right => board.turn(Dir::Right),
-                KeyCode::Char('r') => {
-                    board.reset();
-                    running = true;
+        while event::poll(Duration::ZERO)? {
+            if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                match code {
+                    KeyCode::Char('q') => quitting = true,
+                    KeyCode::Char(' ') => running = !running,
+                    KeyCode::Up => board.turn(Dir::Up),
+                    KeyCode::Down => board.turn(Dir::Down),
+                    KeyCode::Left => board.turn(Dir::Left),
+                    KeyCode::Right => board.turn(Dir::Right),
+                    KeyCode::Char('r') => {
+                        board.reset();
+                        running = true;
+                    }
+                    _ => {}
                 }
-                _ => {}
             }
+        }
+
+        if quitting {
+            break;
         }
 
         if running {

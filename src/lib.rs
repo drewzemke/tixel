@@ -15,8 +15,8 @@ impl Color {
 /// - allows setting color values
 /// - renders to a string that the caller can write to their screen
 pub struct HalfCellCanvas {
-    terminal_rows: usize,
-    terminal_cols: usize,
+    /// (rows, columns)
+    dimensions: (usize, usize),
     buffers: [Buffer; 2],
     front_idx: usize,
 }
@@ -45,24 +45,25 @@ fn write_bg_reset(str: &mut String) {
 type Buffer = Vec<Vec<Option<Color>>>;
 
 impl HalfCellCanvas {
-    pub fn new(terminal_rows: usize, terminal_cols: usize) -> Self {
-        let pixels = vec![vec![None; terminal_cols]; 2 * terminal_rows];
+    pub fn new(dimensions: (usize, usize)) -> Self {
+        let (rows, cols) = dimensions;
+
+        let pixels = vec![vec![None; cols]; 2 * rows];
         let buffers = [pixels.clone(), pixels];
 
         Self {
-            terminal_rows,
-            terminal_cols,
+            dimensions,
             buffers,
             front_idx: 0,
         }
     }
 
     pub fn width(&self) -> usize {
-        self.terminal_cols
+        self.dimensions.1
     }
 
     pub fn height(&self) -> usize {
-        2 * self.terminal_rows
+        2 * self.dimensions.0
     }
 
     /// returns (front, back)
@@ -100,8 +101,7 @@ impl HalfCellCanvas {
         let mut current_top: Option<Color> = None;
         let mut current_bottom: Option<Color> = None;
 
-        let rows = self.terminal_rows;
-        let cols = self.terminal_cols;
+        let (rows, cols) = self.dimensions;
 
         let (front, back) = self.buffers();
 
@@ -167,7 +167,7 @@ mod tests {
 
     #[test]
     fn render_only_outputs_changed_pixels() {
-        let mut canvas = HalfCellCanvas::new(1, 6);
+        let mut canvas = HalfCellCanvas::new((1, 6));
 
         // fill the canvas
         for x in 0..canvas.width() {

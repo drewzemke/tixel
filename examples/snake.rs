@@ -123,7 +123,7 @@ fn main() -> anyhow::Result<()> {
     let mut stdout = std::io::stdout();
 
     let (cols, rows) = terminal::size()?;
-    let mut canvas = HalfCellCanvas::new(rows as usize, cols as usize);
+    let mut canvas = HalfCellCanvas::new((rows as usize, cols as usize));
 
     let height = canvas.height();
     let width = canvas.width();

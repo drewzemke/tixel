@@ -41,7 +41,7 @@ fn bench_render_frame(c: &mut Criterion) {
     let mut group = c.benchmark_group("halfcell/checkerboard/render_frame");
 
     for (name, cols, rows) in sizes {
-        let mut canvas = HalfCellCanvas::new((rows, cols));
+        let mut canvas = HalfCellCanvas::new((rows, cols), (0, 0));
         fill_checkerboard(&mut canvas);
 
         let output = canvas.render();
@@ -61,7 +61,7 @@ fn bench_render_frame(c: &mut Criterion) {
     let mut group = c.benchmark_group("halfcell/solid/render_frame");
 
     for (name, cols, rows) in sizes {
-        let mut canvas = HalfCellCanvas::new((rows, cols));
+        let mut canvas = HalfCellCanvas::new((rows, cols), (0, 0));
         fill_solid(&mut canvas);
 
         let output = canvas.render();
@@ -82,7 +82,7 @@ fn bench_render_frame(c: &mut Criterion) {
 
     for (name, cols, rows) in sizes {
         for proportion in [0.1, 0.5, 1.0] {
-            let mut canvas = HalfCellCanvas::new((rows, cols));
+            let mut canvas = HalfCellCanvas::new((rows, cols), (0, 0));
 
             let target_pixels: Vec<(usize, usize)> = choose_pixels(&canvas, proportion);
             let red = Color::new(255, 0, 0);
@@ -114,7 +114,7 @@ fn bench_render_and_write(c: &mut Criterion) {
     let mut group = c.benchmark_group("halfcell/checkerboard/render_and_write");
 
     for (name, cols, rows) in sizes {
-        let mut canvas = HalfCellCanvas::new((rows, cols));
+        let mut canvas = HalfCellCanvas::new((rows, cols), (0, 0));
         fill_checkerboard(&mut canvas);
 
         let output = canvas.render();
@@ -135,7 +135,7 @@ fn bench_render_and_write(c: &mut Criterion) {
     let mut group = c.benchmark_group("halfcell/solid/render_and_write");
 
     for (name, cols, rows) in sizes {
-        let mut canvas = HalfCellCanvas::new((rows, cols));
+        let mut canvas = HalfCellCanvas::new((rows, cols), (0, 0));
         fill_solid(&mut canvas);
 
         let output = canvas.render();

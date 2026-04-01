@@ -15,8 +15,12 @@ impl Color {
 /// - allows setting color values
 /// - renders to a string that the caller can write to their screen
 pub struct HalfCellCanvas {
-    /// (rows, columns)
+    /// (rows, columns) in *cells*
     dimensions: (usize, usize),
+
+    /// (row_offset, col_offset) in *cells*
+    offset: (usize, usize),
+
     buffers: [Buffer; 2],
     front_idx: usize,
 }
@@ -45,7 +49,7 @@ fn write_bg_reset(str: &mut String) {
 type Buffer = Vec<Vec<Option<Color>>>;
 
 impl HalfCellCanvas {
-    pub fn new(dimensions: (usize, usize)) -> Self {
+    pub fn new(dimensions: (usize, usize), offset: (usize, usize)) -> Self {
         let (rows, cols) = dimensions;
 
         let pixels = vec![vec![None; cols]; 2 * rows];
@@ -53,6 +57,7 @@ impl HalfCellCanvas {
 
         Self {
             dimensions,
+            offset,
             buffers,
             front_idx: 0,
         }
@@ -96,7 +101,8 @@ impl HalfCellCanvas {
     pub fn render(&mut self) -> String {
         // NOTE: estimating 40 bytes worse case for a foreground+background+half-cell output
         let mut out = String::with_capacity(self.width() * self.height() * 40);
-        write_move_to(&mut out, 0, 0);
+
+        let (row_offset, col_offset) = self.offset;
 
         let mut current_top: Option<Color> = None;
         let mut current_bottom: Option<Color> = None;
@@ -105,9 +111,12 @@ impl HalfCellCanvas {
 
         let (front, back) = self.buffers();
 
-        let mut skipping = false;
+        let mut skipping;
 
         for row in 0..rows {
+            write_move_to(&mut out, row_offset + row, col_offset);
+            skipping = true;
+
             for col in 0..cols {
                 let back_top = back[2 * row][col];
                 let back_bottom = back[2 * row + 1][col];
@@ -123,7 +132,7 @@ impl HalfCellCanvas {
                 // emit a move-to seq before writing if we've previously skipped some cells
                 if skipping {
                     skipping = false;
-                    write_move_to(&mut out, row, col);
+                    write_move_to(&mut out, row_offset + row, col_offset + col);
                 }
 
                 if let Some(top_color) = back_top {
@@ -167,7 +176,7 @@ mod tests {
 
     #[test]
     fn render_only_outputs_changed_pixels() {
-        let mut canvas = HalfCellCanvas::new((1, 6));
+        let mut canvas = HalfCellCanvas::new((1, 6), (0, 0));
 
         // fill the canvas
         for x in 0..canvas.width() {

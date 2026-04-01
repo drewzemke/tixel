@@ -20,6 +20,27 @@ pub struct HalfCellCanvas {
     pixels: Vec<Vec<Option<Color>>>,
 }
 
+/// writes a move-to escape seq to a string buffer. NOTE: row and col are *ZERO*-based
+fn write_move_to(str: &mut String, row: usize, col: usize) {
+    let _ = write!(str, "\x1b[{};{}H", row + 1, col + 1);
+}
+
+fn write_fg_color(str: &mut String, color: Color) {
+    let _ = write!(str, "\x1b[38;2;{};{};{}m", color.0, color.1, color.2);
+}
+
+fn write_bg_color(str: &mut String, color: Color) {
+    let _ = write!(str, "\x1b[48;2;{};{};{}m", color.0, color.1, color.2);
+}
+
+fn write_fg_reset(str: &mut String) {
+    let _ = write!(str, "\x1b[39m",);
+}
+
+fn write_bg_reset(str: &mut String) {
+    let _ = write!(str, "\x1b[49m",);
+}
+
 impl HalfCellCanvas {
     pub fn new(terminal_rows: usize, terminal_cols: usize) -> Self {
         let pixels = vec![vec![None; terminal_cols]; 2 * terminal_rows];
@@ -48,7 +69,7 @@ impl HalfCellCanvas {
     pub fn render(&self) -> String {
         // NOTE: estimating 40 bytes worse case for a foreground+background+half-cell output
         let mut out = String::with_capacity(self.width() * self.height() * 40);
-        out.push_str(&format!("\x1b[{};{}H", 0, 0));
+        write_move_to(&mut out, 0, 0);
 
         let mut current_top: Option<Color> = None;
         let mut current_bottom: Option<Color> = None;
@@ -60,34 +81,24 @@ impl HalfCellCanvas {
 
                 if let Some(top_color) = top_color {
                     if current_top.is_none_or(|c| c != top_color) {
-                        let _ = write!(
-                            &mut out,
-                            "\x1b[38;2;{};{};{}m",
-                            top_color.0, top_color.1, top_color.2
-                        );
+                        write_fg_color(&mut out, top_color);
                         current_top = Some(top_color);
                     };
                 } else {
                     if current_top.is_some() {
-                        // reset foreground
-                        let _ = write!(&mut out, "\x1b[39m",);
+                        write_fg_reset(&mut out);
                         current_top = None;
                     }
                 };
 
                 if let Some(bottom_color) = bottom_color {
                     if current_bottom.is_none_or(|c| c != bottom_color) {
-                        let _ = write!(
-                            &mut out,
-                            "\x1b[48;2;{};{};{}m",
-                            bottom_color.0, bottom_color.1, bottom_color.2
-                        );
+                        write_bg_color(&mut out, bottom_color);
                         current_bottom = Some(bottom_color);
                     }
                 } else {
                     if current_bottom.is_some() {
-                        // reset background
-                        let _ = write!(&mut out, "\x1b[49m",);
+                        write_bg_reset(&mut out);
                         current_bottom = None;
                     }
                 };

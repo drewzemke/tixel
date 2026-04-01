@@ -14,3 +14,6 @@ rand = "0.10"
 [[bench]]
 name = "render"
 harness = false
+
+[profile.bench]
+debug = true

@@ -17,7 +17,8 @@ impl Color {
 pub struct HalfCellCanvas {
     terminal_rows: usize,
     terminal_cols: usize,
-    pixels: Vec<Vec<Option<Color>>>,
+    buffers: [Buffer; 2],
+    front_idx: usize,
 }
 
 /// writes a move-to escape seq to a string buffer. NOTE: row and col are *ZERO*-based
@@ -41,14 +42,18 @@ fn write_bg_reset(str: &mut String) {
     let _ = write!(str, "\x1b[49m",);
 }
 
+type Buffer = Vec<Vec<Option<Color>>>;
+
 impl HalfCellCanvas {
     pub fn new(terminal_rows: usize, terminal_cols: usize) -> Self {
         let pixels = vec![vec![None; terminal_cols]; 2 * terminal_rows];
+        let buffers = [pixels.clone(), pixels];
 
         Self {
             terminal_rows,
             terminal_cols,
-            pixels,
+            buffers,
+            front_idx: 0,
         }
     }
 
@@ -60,13 +65,34 @@ impl HalfCellCanvas {
         2 * self.terminal_rows
     }
 
+    /// returns (front, back)
+    fn buffers(&mut self) -> (&Buffer, &mut Buffer) {
+        let [front, back] = self
+            .buffers
+            .get_disjoint_mut([self.front_idx, 1 - self.front_idx])
+            .unwrap();
+        (front, back)
+    }
+
+    fn swap_buffers(&mut self) {
+        self.front_idx = 1 - self.front_idx;
+    }
+
+    fn clear_back_buffer(&mut self) {
+        let (_, back) = self.buffers();
+        for row in back.iter_mut() {
+            row.fill(None);
+        }
+    }
+
     /// x and y are in canvas space, not terminal space
     /// x is distance from left edge, y is distance from top
     pub fn set_color(&mut self, x: usize, y: usize, color: Color) {
-        self.pixels[y][x] = Some(color)
+        let (_, back) = self.buffers();
+        back[y][x] = Some(color)
     }
 
-    pub fn render(&self) -> String {
+    pub fn render(&mut self) -> String {
         // NOTE: estimating 40 bytes worse case for a foreground+background+half-cell output
         let mut out = String::with_capacity(self.width() * self.height() * 40);
         write_move_to(&mut out, 0, 0);
@@ -74,12 +100,33 @@ impl HalfCellCanvas {
         let mut current_top: Option<Color> = None;
         let mut current_bottom: Option<Color> = None;
 
-        for row in 0..self.terminal_rows {
-            for col in 0..self.terminal_cols {
-                let top_color = self.pixels[2 * row][col];
-                let bottom_color = self.pixels[2 * row + 1][col];
+        let rows = self.terminal_rows;
+        let cols = self.terminal_cols;
 
-                if let Some(top_color) = top_color {
+        let (front, back) = self.buffers();
+
+        let mut skipping = false;
+
+        for row in 0..rows {
+            for col in 0..cols {
+                let back_top = back[2 * row][col];
+                let back_bottom = back[2 * row + 1][col];
+
+                // compare to front. if it's the same, skip
+                let front_top = front[2 * row][col];
+                let front_bottom = front[2 * row + 1][col];
+                if front_top == back_top && front_bottom == back_bottom {
+                    skipping = true;
+                    continue;
+                }
+
+                // emit a move-to seq before writing if we've previously skipped some cells
+                if skipping {
+                    skipping = false;
+                    write_move_to(&mut out, row, col);
+                }
+
+                if let Some(top_color) = back_top {
                     if current_top.is_none_or(|c| c != top_color) {
                         write_fg_color(&mut out, top_color);
                         current_top = Some(top_color);
@@ -91,7 +138,7 @@ impl HalfCellCanvas {
                     }
                 };
 
-                if let Some(bottom_color) = bottom_color {
+                if let Some(bottom_color) = back_bottom {
                     if current_bottom.is_none_or(|c| c != bottom_color) {
                         write_bg_color(&mut out, bottom_color);
                         current_bottom = Some(bottom_color);
@@ -107,6 +154,38 @@ impl HalfCellCanvas {
             }
         }
 
+        self.swap_buffers();
+        self.clear_back_buffer();
+
         out
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn render_only_outputs_changed_pixels() {
+        let mut canvas = HalfCellCanvas::new(1, 6);
+
+        // fill the canvas
+        for x in 0..canvas.width() {
+            canvas.set_color(x, 0, Color::new(0, 0, 0));
+        }
+
+        // render
+        let _ = canvas.render();
+
+        // fill canvas again; changing the first and last pixel
+        for x in 1..canvas.width() - 1 {
+            canvas.set_color(x, 0, Color::new(0, 0, 0));
+        }
+        canvas.set_color(0, 0, Color::new(100, 100, 100));
+        canvas.set_color(canvas.width() - 1, 0, Color::new(200, 200, 200));
+
+        // render again and look for a "move" escape seq
+        let output = canvas.render();
+        assert!(output.contains(&format!("\x1b[{};{}H", 1, canvas.width())));
     }
 }

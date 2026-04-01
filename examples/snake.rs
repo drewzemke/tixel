@@ -194,8 +194,11 @@ fn main() -> anyhow::Result<()> {
             thread::sleep(remaining);
         }
 
-        let output = canvas.render();
-        let _ = stdout.write(output.as_bytes());
+        if running {
+            let output = canvas.render();
+            let _ = stdout.write_all(output.as_bytes());
+            let _ = stdout.flush();
+        }
     }
 
     execute!(stdout, LeaveAlternateScreen, Show)?;

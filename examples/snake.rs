@@ -155,21 +155,21 @@ fn main() -> anyhow::Result<()> {
     loop {
         let frame_start = Instant::now();
 
-        while event::poll(Duration::ZERO)? {
-            if let Event::Key(KeyEvent { code, .. }) = event::read()? {
-                match code {
-                    KeyCode::Char('q') => quitting = true,
-                    KeyCode::Char(' ') => running = !running,
-                    KeyCode::Up => board.turn(Dir::Up),
-                    KeyCode::Down => board.turn(Dir::Down),
-                    KeyCode::Left => board.turn(Dir::Left),
-                    KeyCode::Right => board.turn(Dir::Right),
-                    KeyCode::Char('r') => {
-                        board.reset();
-                        running = true;
-                    }
-                    _ => {}
+        if event::poll(Duration::ZERO)?
+            && let Event::Key(KeyEvent { code, .. }) = event::read()?
+        {
+            match code {
+                KeyCode::Char('q') => quitting = true,
+                KeyCode::Char(' ') => running = !running,
+                KeyCode::Up => board.turn(Dir::Up),
+                KeyCode::Down => board.turn(Dir::Down),
+                KeyCode::Left => board.turn(Dir::Left),
+                KeyCode::Right => board.turn(Dir::Right),
+                KeyCode::Char('r') => {
+                    board.reset();
+                    running = true;
                 }
+                _ => {}
             }
         }
 

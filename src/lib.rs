@@ -26,23 +26,23 @@ pub struct HalfCellCanvas {
 }
 
 /// writes a move-to escape seq to a string buffer. NOTE: row and col are *ZERO*-based
-fn write_move_to(str: &mut String, row: usize, col: usize) {
+pub fn write_move_to(str: &mut String, row: usize, col: usize) {
     let _ = write!(str, "\x1b[{};{}H", row + 1, col + 1);
 }
 
-fn write_fg_color(str: &mut String, color: Color) {
+pub fn write_fg_color(str: &mut String, color: Color) {
     let _ = write!(str, "\x1b[38;2;{};{};{}m", color.0, color.1, color.2);
 }
 
-fn write_bg_color(str: &mut String, color: Color) {
+pub fn write_bg_color(str: &mut String, color: Color) {
     let _ = write!(str, "\x1b[48;2;{};{};{}m", color.0, color.1, color.2);
 }
 
-fn write_fg_reset(str: &mut String) {
+pub fn write_fg_reset(str: &mut String) {
     let _ = write!(str, "\x1b[39m",);
 }
 
-fn write_bg_reset(str: &mut String) {
+pub fn write_bg_reset(str: &mut String) {
     let _ = write!(str, "\x1b[49m",);
 }
 

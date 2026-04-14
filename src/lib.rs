@@ -98,6 +98,14 @@ impl HalfCellCanvas {
         back[y][x] = Some(color)
     }
 
+    /// Resets the internal buffers, guaranteeing a full-redraw on the
+    /// next render
+    pub fn reset(&mut self) {
+        self.clear_back_buffer();
+        self.swap_buffers();
+        self.clear_back_buffer();
+    }
+
     pub fn render(&mut self) -> String {
         // NOTE: estimating 40 bytes worse case for a foreground+background+half-cell output
         let mut out = String::with_capacity(self.width() * self.height() * 40);
@@ -140,11 +148,9 @@ impl HalfCellCanvas {
                         write_fg_color(&mut out, top_color);
                         current_top = Some(top_color);
                     };
-                } else {
-                    if current_top.is_some() {
-                        write_fg_reset(&mut out);
-                        current_top = None;
-                    }
+                } else if current_top.is_some() {
+                    write_fg_reset(&mut out);
+                    current_top = None;
                 };
 
                 if let Some(bottom_color) = back_bottom {
@@ -152,11 +158,9 @@ impl HalfCellCanvas {
                         write_bg_color(&mut out, bottom_color);
                         current_bottom = Some(bottom_color);
                     }
-                } else {
-                    if current_bottom.is_some() {
-                        write_bg_reset(&mut out);
-                        current_bottom = None;
-                    }
+                } else if current_bottom.is_some() {
+                    write_bg_reset(&mut out);
+                    current_bottom = None;
                 };
 
                 let _ = write!(&mut out, "{UPPER_HALF_CELL}");

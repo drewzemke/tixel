@@ -1,0 +1,3 @@
+# tixel
+
+A terminal renderer.

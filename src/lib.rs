@@ -11,6 +11,8 @@ impl Color {
     }
 }
 
+type Buffer = Vec<Option<Color>>;
+
 /// renders to strings using the half block character
 /// - allows setting color values
 /// - renders to a string that the caller can write to their screen
@@ -46,13 +48,11 @@ pub fn write_bg_reset(str: &mut String) {
     let _ = write!(str, "\x1b[49m",);
 }
 
-type Buffer = Vec<Vec<Option<Color>>>;
-
 impl HalfCellCanvas {
     pub fn new(dimensions: (usize, usize), offset: (usize, usize)) -> Self {
         let (rows, cols) = dimensions;
 
-        let pixels = vec![vec![None; cols]; 2 * rows];
+        let pixels = vec![None; 2 * rows * cols];
         let buffers = [pixels.clone(), pixels];
 
         Self {
@@ -86,16 +86,15 @@ impl HalfCellCanvas {
 
     fn clear_back_buffer(&mut self) {
         let (_, back) = self.buffers();
-        for row in back.iter_mut() {
-            row.fill(None);
-        }
+        back.fill(None);
     }
 
     /// x and y are in canvas space, not terminal space
     /// x is distance from left edge, y is distance from top
     pub fn set_color(&mut self, x: usize, y: usize, color: Color) {
+        let idx = y * self.width() + x;
         let (_, back) = self.buffers();
-        back[y][x] = Some(color)
+        back[idx] = Some(color)
     }
 
     /// Resets the internal buffers, guaranteeing a full-redraw on the
@@ -111,6 +110,7 @@ impl HalfCellCanvas {
         let mut out = String::with_capacity(self.width() * self.height() * 40);
 
         let (row_offset, col_offset) = self.offset;
+        let width = self.width();
 
         let mut current_top: Option<Color> = None;
         let mut current_bottom: Option<Color> = None;
@@ -126,12 +126,12 @@ impl HalfCellCanvas {
             skipping = true;
 
             for col in 0..cols {
-                let back_top = back[2 * row][col];
-                let back_bottom = back[2 * row + 1][col];
+                let back_top = back[(2 * row) * width + col];
+                let back_bottom = back[(2 * row + 1) * width + col];
 
                 // compare to front. if it's the same, skip
-                let front_top = front[2 * row][col];
-                let front_bottom = front[2 * row + 1][col];
+                let front_top = front[(2 * row) * width + col];
+                let front_bottom = front[(2 * row + 1) * width + col];
                 if front_top == back_top && front_bottom == back_bottom {
                     skipping = true;
                     continue;

@@ -12,7 +12,7 @@ use crossterm::{
     terminal::{self, Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use rand::RngExt;
-use tixel::{Color, HalfCellCanvas};
+use tixel::HalfCellCanvas;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Dir {
@@ -184,7 +184,7 @@ fn main() -> anyhow::Result<()> {
                 // board
                 for y in 0..height {
                     for x in 0..width {
-                        canvas.set_color(x, y, Color::new(10, 10, 10));
+                        canvas.set_color(x, y, (10, 10, 10).into());
                     }
                 }
 
@@ -192,9 +192,9 @@ fn main() -> anyhow::Result<()> {
                 for pos in &board.snake {
                     // FIXME: doesn't work
                     let color = if board.is_dead() {
-                        Color::new(100, 100, 100)
+                        (100, 100, 100).into()
                     } else {
-                        Color::new(140, 240, 140)
+                        (140, 240, 140).into()
                     };
                     canvas.set_color(pos.0 as usize, pos.1 as usize, color);
                 }
@@ -203,7 +203,7 @@ fn main() -> anyhow::Result<()> {
                 canvas.set_color(
                     board.food.0 as usize,
                     board.food.1 as usize,
-                    Color::new(240, 140, 140),
+                    (240, 140, 140).into(),
                 );
 
                 board.advance();

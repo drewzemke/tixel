@@ -156,3 +156,99 @@ impl BrailleCanvas {
         out
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // strips ANSI escape sequences, returning just the visible characters
+    fn visible_chars(output: &str) -> Vec<char> {
+        let mut chars = Vec::new();
+        let mut in_escape = false;
+        for c in output.chars() {
+            if c == '\x1b' {
+                in_escape = true;
+            } else if in_escape {
+                if c.is_ascii_alphabetic() {
+                    in_escape = false;
+                }
+            } else {
+                chars.push(c);
+            }
+        }
+        chars
+    }
+
+    const WHITE: Color = Color::new(255, 255, 255);
+
+    #[test]
+    fn empty_canvas_renders_spaces() {
+        let mut canvas = BrailleCanvas::new((2, 3), (0, 0));
+        let output = canvas.render();
+        let chars = visible_chars(&output);
+        assert_eq!(chars.len(), 6);
+        assert!(chars.iter().all(|&c| c == ' '));
+    }
+
+    #[test]
+    fn each_dot_maps_to_correct_braille_bit() {
+        // dot positions within a cell and their expected braille bits:
+        //   (0,0)->0  (1,0)->3
+        //   (0,1)->1  (1,1)->4
+        //   (0,2)->2  (1,2)->5
+        //   (0,3)->6  (1,3)->7
+        let expected: [(usize, usize, u32); 8] = [
+            (0, 0, 0x01),
+            (1, 0, 0x08),
+            (0, 1, 0x02),
+            (1, 1, 0x10),
+            (0, 2, 0x04),
+            (1, 2, 0x20),
+            (0, 3, 0x40),
+            (1, 3, 0x80),
+        ];
+
+        for (x, y, bit) in expected {
+            let mut canvas = BrailleCanvas::new((1, 1), (0, 0));
+            canvas.set(x, y, WHITE);
+            let output = canvas.render();
+            let chars = visible_chars(&output);
+            assert_eq!(
+                chars[0],
+                char::from_u32(0x2800 | bit).unwrap(),
+                "dot ({x}, {y}) should set bit {bit:#04x}"
+            );
+        }
+    }
+
+    #[test]
+    fn set_out_of_bounds_does_not_panic() {
+        let mut canvas = BrailleCanvas::new((1, 1), (0, 0));
+        canvas.set(2, 0, WHITE);
+        canvas.set(0, 4, WHITE);
+        canvas.set(100, 100, WHITE);
+        let chars = visible_chars(&canvas.render());
+        assert!(chars.iter().all(|&c| c == ' '));
+    }
+
+    #[test]
+    fn render_clears_buffer() {
+        let mut canvas = BrailleCanvas::new((1, 1), (0, 0));
+        canvas.set(0, 0, WHITE);
+        let _ = canvas.render();
+
+        // second render without any new sets should be empty
+        let chars = visible_chars(&canvas.render());
+        assert!(chars.iter().all(|&c| c == ' '));
+    }
+
+    #[test]
+    fn multiple_dots_combine_in_one_cell() {
+        let mut canvas = BrailleCanvas::new((1, 1), (0, 0));
+        // top-left and bottom-right dots
+        canvas.set(0, 0, WHITE); // bit 0
+        canvas.set(1, 3, WHITE); // bit 7
+        let chars = visible_chars(&canvas.render());
+        assert_eq!(chars[0], char::from_u32(0x2800 | 0x01 | 0x80).unwrap());
+    }
+}

@@ -60,6 +60,8 @@ fn main() -> anyhow::Result<()> {
         (rows as usize / 8, cols as usize / 8),
     );
 
+    canvas.set_bg_color((0, 0, 0).into());
+
     let height = canvas.height();
     let width = canvas.width();
 

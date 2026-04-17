@@ -1,6 +1,6 @@
 use crate::{
     Color,
-    utils::{write_fg_color, write_move_to},
+    utils::{write_bg_color, write_fg_color, write_move_to},
 };
 
 /// renders to strings using braille characters
@@ -24,6 +24,9 @@ pub struct BrailleCanvas {
 
     /// data is per *cell*
     colors: Vec<Option<Color>>,
+
+    /// optional color used for the entire canvas background
+    bg_color: Option<Color>,
 }
 
 impl BrailleCanvas {
@@ -38,6 +41,7 @@ impl BrailleCanvas {
             offset,
             buffer,
             colors,
+            bg_color: None,
         }
     }
 
@@ -67,28 +71,37 @@ impl BrailleCanvas {
         self.set(x.round() as usize, y.round() as usize, color);
     }
 
+    /// sets a background color for the entire canvas
+    pub fn set_bg_color(&mut self, color: Color) {
+        self.bg_color = Some(color);
+    }
+
     fn clear_buffer(&mut self) {
         self.buffer.fill(false);
         self.colors.fill(None);
     }
 
     pub fn render(&mut self) -> String {
-        let mut out = String::new();
-
         let width = self.width();
 
-        let mut color = None;
+        let mut out = String::new();
+
+        if let Some(bg_color) = self.bg_color {
+            write_bg_color(&mut out, bg_color);
+        }
+
+        let mut current_color = None;
 
         for row in 0..self.dimensions.0 {
             write_move_to(&mut out, row + self.offset.0, self.offset.1);
             for col in 0..self.dimensions.1 {
                 // write a color byte if the color has changed in this cell
                 let cell_color = self.colors[row * width / 2 + col];
-                if cell_color != color
+                if cell_color != current_color
                     && let Some(cell_color) = cell_color
                 {
                     write_fg_color(&mut out, cell_color);
-                    color = Some(cell_color);
+                    current_color = Some(cell_color);
                 }
 
                 // figure out which dots are set inside this cell

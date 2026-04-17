@@ -11,16 +11,17 @@ use crossterm::{
     terminal::{self, Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use rand::RngExt;
-use tixel::BrailleCanvas;
+use tixel::{BrailleCanvas, Color};
 
 struct Particle {
     pos: (f64, f64),
     vel: (f64, f64),
+    color: Color,
 }
 
 impl Particle {
-    fn new(pos: (f64, f64), vel: (f64, f64)) -> Self {
-        Self { pos, vel }
+    fn new(pos: (f64, f64), vel: (f64, f64), color: Color) -> Self {
+        Self { pos, vel, color }
     }
 
     fn update(&mut self, dt_sec: f64, width: f64, height: f64) {
@@ -55,8 +56,8 @@ fn main() -> anyhow::Result<()> {
 
     let (cols, rows) = terminal::size()?;
     let mut canvas = BrailleCanvas::new(
-        (rows as usize / 2, cols as usize / 2),
-        (rows as usize / 4, cols as usize / 4),
+        (3 * rows as usize / 4, 3 * cols as usize / 4),
+        (rows as usize / 8, cols as usize / 8),
     );
 
     let height = canvas.height();
@@ -76,7 +77,9 @@ fn main() -> anyhow::Result<()> {
             let r = rng.random_range(VEL_RANGE);
             let vx = r * th.cos();
             let vy = r * th.sin();
-            Particle::new((x, y), (vx, vy))
+
+            let color: (u8, u8, u8) = rng.random();
+            Particle::new((x, y), (vx, vy), color.into())
         })
         .collect();
 
@@ -99,7 +102,7 @@ fn main() -> anyhow::Result<()> {
 
             for p in &mut particles {
                 p.update(dt, width as f64, height as f64);
-                canvas.set_f(p.pos.0, p.pos.1);
+                canvas.set_f(p.pos.0, p.pos.1, p.color);
             }
 
             let output = canvas.render();

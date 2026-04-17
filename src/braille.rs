@@ -1,8 +1,16 @@
-use crate::utils::write_move_to;
-
-type Buffer = Vec<bool>;
+use crate::{
+    Color,
+    utils::{write_fg_color, write_move_to},
+};
 
 /// renders to strings using braille characters
+///
+/// - sets colors of dots
+///
+///   NOTE: color works on a "last-wins" strategy. the last color
+///   set for a dot within a single terminal cell dictates the
+///   color of every dot in the cell
+///
 /// - renders to a string that the caller can write to their screen
 pub struct BrailleCanvas {
     /// (rows, columns) in *cells*
@@ -11,7 +19,11 @@ pub struct BrailleCanvas {
     /// (row_offset, col_offset) in *cells*
     offset: (usize, usize),
 
-    buffer: Buffer,
+    /// data is per *dot*
+    buffer: Vec<bool>,
+
+    /// data is per *cell*
+    colors: Vec<Option<Color>>,
 }
 
 impl BrailleCanvas {
@@ -19,11 +31,13 @@ impl BrailleCanvas {
         let (rows, cols) = dimensions;
 
         let buffer = vec![false; 8 * rows * cols];
+        let colors = vec![None; rows * cols];
 
         BrailleCanvas {
             dimensions,
             offset,
             buffer,
+            colors,
         }
     }
 
@@ -36,22 +50,26 @@ impl BrailleCanvas {
     }
 
     /// x and y are in canvas coordinates
-    pub fn set(&mut self, x: usize, y: usize) {
+    pub fn set(&mut self, x: usize, y: usize, color: Color) {
         if x >= self.width() || y >= self.height() {
             return;
         }
 
-        let idx = y * self.width() + x;
-        self.buffer[idx] = true;
+        let buffer_idx = y * self.width() + x;
+        self.buffer[buffer_idx] = true;
+
+        let cell_idx = (y / 4) * self.dimensions.1 + (x / 2);
+        self.colors[cell_idx] = Some(color);
     }
 
     /// x and y are in canvas coordinates
-    pub fn set_f(&mut self, x: f64, y: f64) {
-        self.set(x.round() as usize, y.round() as usize);
+    pub fn set_f(&mut self, x: f64, y: f64, color: Color) {
+        self.set(x.round() as usize, y.round() as usize, color);
     }
 
     fn clear_buffer(&mut self) {
         self.buffer.fill(false);
+        self.colors.fill(None);
     }
 
     pub fn render(&mut self) -> String {
@@ -59,9 +77,20 @@ impl BrailleCanvas {
 
         let width = self.width();
 
+        let mut color = None;
+
         for row in 0..self.dimensions.0 {
             write_move_to(&mut out, row + self.offset.0, self.offset.1);
             for col in 0..self.dimensions.1 {
+                // write a color byte if the color has changed in this cell
+                let cell_color = self.colors[row * width / 2 + col];
+                if cell_color != color
+                    && let Some(cell_color) = cell_color
+                {
+                    write_fg_color(&mut out, cell_color);
+                    color = Some(cell_color);
+                }
+
                 // figure out which dots are set inside this cell
                 let mut byte = 0;
 

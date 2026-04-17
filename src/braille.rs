@@ -2,8 +2,7 @@ use crate::utils::write_move_to;
 
 type Buffer = Vec<bool>;
 
-/// renders to strings using the half block character
-/// - allows setting color values
+/// renders to strings using braille characters
 /// - renders to a string that the caller can write to their screen
 pub struct BrailleCanvas {
     /// (rows, columns) in *cells*
@@ -36,7 +35,6 @@ impl BrailleCanvas {
         4 * self.dimensions.0
     }
 
-    // FIXME what should we do if x or y are out of bounds?
     /// x and y are in canvas coordinates
     pub fn set(&mut self, x: usize, y: usize) {
         if x >= self.width() || y >= self.height() {
@@ -58,11 +56,11 @@ impl BrailleCanvas {
 
     pub fn render(&mut self) -> String {
         let mut out = String::new();
-        write_move_to(&mut out, 0, 0);
 
         let width = self.width();
 
         for row in 0..self.dimensions.0 {
+            write_move_to(&mut out, row + self.offset.0, self.offset.1);
             for col in 0..self.dimensions.1 {
                 // figure out which dots are set inside this cell
                 let mut byte = 0;
@@ -110,7 +108,7 @@ impl BrailleCanvas {
             }
         }
 
-        // clear to get read for the next render
+        // clear to prepare the next render
         self.clear_buffer();
 
         out

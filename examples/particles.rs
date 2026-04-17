@@ -54,7 +54,10 @@ fn main() -> anyhow::Result<()> {
     let mut stdout = std::io::stdout();
 
     let (cols, rows) = terminal::size()?;
-    let mut canvas = BrailleCanvas::new((rows as usize, cols as usize), (0, 0));
+    let mut canvas = BrailleCanvas::new(
+        (rows as usize / 2, cols as usize / 2),
+        (rows as usize / 4, cols as usize / 4),
+    );
 
     let height = canvas.height();
     let width = canvas.width();

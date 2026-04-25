@@ -8,11 +8,11 @@ pub fn write_move_to(str: &mut String, row: usize, col: usize) {
 }
 
 pub fn write_fg_color(str: &mut String, color: Color) {
-    let _ = write!(str, "\x1b[38;2;{};{};{}m", color.r(), color.g(), color.b());
+    color.write_fg(str);
 }
 
 pub fn write_bg_color(str: &mut String, color: Color) {
-    let _ = write!(str, "\x1b[48;2;{};{};{}m", color.r(), color.g(), color.b());
+    color.write_bg(str);
 }
 
 pub fn write_fg_reset(str: &mut String) {

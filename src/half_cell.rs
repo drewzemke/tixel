@@ -158,7 +158,7 @@ mod tests {
 
         // fill the canvas
         for x in 0..canvas.width() {
-            canvas.set_color(x, 0, Color::new(0, 0, 0));
+            canvas.set_color(x, 0, Color::Rgb(0, 0, 0));
         }
 
         // render
@@ -166,10 +166,10 @@ mod tests {
 
         // fill canvas again; changing the first and last pixel
         for x in 1..canvas.width() - 1 {
-            canvas.set_color(x, 0, Color::new(0, 0, 0));
+            canvas.set_color(x, 0, Color::Rgb(0, 0, 0));
         }
-        canvas.set_color(0, 0, Color::new(100, 100, 100));
-        canvas.set_color(canvas.width() - 1, 0, Color::new(200, 200, 200));
+        canvas.set_color(0, 0, Color::Rgb(100, 100, 100));
+        canvas.set_color(canvas.width() - 1, 0, Color::Rgb(200, 200, 200));
 
         // render again and look for a "move" escape seq
         let output = canvas.render();

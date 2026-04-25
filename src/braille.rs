@@ -179,7 +179,7 @@ mod tests {
         chars
     }
 
-    const WHITE: Color = Color::new(255, 255, 255);
+    const WHITE: Color = Color::Rgb(255, 255, 255);
 
     #[test]
     fn empty_canvas_renders_spaces() {

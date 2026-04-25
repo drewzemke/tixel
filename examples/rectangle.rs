@@ -41,7 +41,7 @@ fn main() -> anyhow::Result<()> {
                     let r = (1. + (frame as f64 / 100.).cos()) / 2. * 256.;
                     let g = (x as f64 / width as f64) * 256.;
                     let b = (1. + (y as f64 / 2.).sin()) / 2. * 256.;
-                    canvas.set_color(x, y, Color::new(r as u8, g as u8, b as u8));
+                    canvas.set_color(x, y, Color::Rgb(r as u8, g as u8, b as u8));
                 }
             }
         }

@@ -5,8 +5,8 @@ use rand::{SeedableRng, seq::IndexedRandom};
 use tixel::{Color, HalfCellCanvas};
 
 fn fill_checkerboard(canvas: &mut HalfCellCanvas) {
-    let red = Color::new(255, 0, 0);
-    let blue = Color::new(0, 0, 255);
+    let red = Color::Rgb(255, 0, 0);
+    let blue = Color::Rgb(0, 0, 255);
 
     for y in 0..canvas.height() {
         for x in 0..canvas.width() {
@@ -17,7 +17,7 @@ fn fill_checkerboard(canvas: &mut HalfCellCanvas) {
 }
 
 fn fill_solid(canvas: &mut HalfCellCanvas) {
-    let color = Color::new(100, 200, 120);
+    let color = Color::Rgb(100, 200, 120);
 
     for y in 0..canvas.height() {
         for x in 0..canvas.width() {
@@ -85,8 +85,8 @@ fn bench_render_frame(c: &mut Criterion) {
             let mut canvas = HalfCellCanvas::new((rows, cols), (0, 0));
 
             let target_pixels: Vec<(usize, usize)> = choose_pixels(&canvas, proportion);
-            let red = Color::new(255, 0, 0);
-            let blue = Color::new(0, 0, 255);
+            let red = Color::Rgb(255, 0, 0);
+            let blue = Color::Rgb(0, 0, 255);
 
             let mut flip = true;
 

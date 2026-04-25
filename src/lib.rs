@@ -1,5 +1,5 @@
 pub use braille::BrailleCanvas;
-pub use color::Color;
+pub use color::{AnsiColor, Color};
 pub use half_cell::HalfCellCanvas;
 
 mod braille;

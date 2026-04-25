@@ -54,6 +54,7 @@ impl BrailleCanvas {
     }
 
     /// x and y are in canvas coordinates
+    /// doesn't write anything if coordinates are outside of the canvas bounds
     pub fn set(&mut self, x: usize, y: usize, color: Color) {
         if x >= self.width() || y >= self.height() {
             return;
@@ -67,7 +68,12 @@ impl BrailleCanvas {
     }
 
     /// x and y are in canvas coordinates
+    /// doesn't write anything if coordinates are outside of the canvas bounds
     pub fn set_f(&mut self, x: f64, y: f64, color: Color) {
+        if x < 0. || y < 0. {
+            return;
+        }
+
         self.set(x.round() as usize, y.round() as usize, color);
     }
 

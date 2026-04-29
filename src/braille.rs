@@ -87,26 +87,24 @@ impl BrailleCanvas {
         self.colors.fill(None);
     }
 
-    pub fn render(&mut self) -> String {
+    pub fn render_to(&mut self, buf: &mut String) {
         let width = self.width();
 
-        let mut out = String::new();
-
         if let Some(bg_color) = self.bg_color {
-            write_bg_color(&mut out, bg_color);
+            write_bg_color(buf, bg_color);
         }
 
         let mut current_color = None;
 
         for row in 0..self.dimensions.0 {
-            write_move_to(&mut out, row + self.offset.0, self.offset.1);
+            write_move_to(buf, row + self.offset.0, self.offset.1);
             for col in 0..self.dimensions.1 {
                 // write a color byte if the color has changed in this cell
                 let cell_color = self.colors[row * width / 2 + col];
                 if cell_color != current_color
                     && let Some(cell_color) = cell_color
                 {
-                    write_fg_color(&mut out, cell_color);
+                    write_fg_color(buf, cell_color);
                     current_color = Some(cell_color);
                 }
 
@@ -149,17 +147,21 @@ impl BrailleCanvas {
                 }
 
                 if byte == 0 {
-                    out.push(' ');
+                    buf.push(' ');
                 } else {
-                    out.push(char::from_u32(0x2800 | byte as u32).unwrap());
+                    buf.push(char::from_u32(0x2800 | byte as u32).unwrap());
                 }
             }
         }
 
         // clear to prepare the next render
         self.clear_buffer();
+    }
 
-        out
+    pub fn render(&mut self) -> String {
+        let mut buf = String::new();
+        self.render_to(&mut buf);
+        buf
     }
 }
 

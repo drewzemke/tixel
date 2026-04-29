@@ -79,10 +79,7 @@ impl HalfCellCanvas {
         self.clear_back_buffer();
     }
 
-    pub fn render(&mut self) -> String {
-        // NOTE: estimating 40 bytes worse case for a foreground+background+half-cell output
-        let mut out = String::with_capacity(self.width() * self.height() * 40);
-
+    pub fn render_to(&mut self, buf: &mut String) {
         let (row_offset, col_offset) = self.offset;
         let width = self.width();
 
@@ -96,7 +93,7 @@ impl HalfCellCanvas {
         let mut skipping;
 
         for row in 0..rows {
-            write_move_to(&mut out, row_offset + row, col_offset);
+            write_move_to(buf, row_offset + row, col_offset);
             skipping = true;
 
             for col in 0..cols {
@@ -114,37 +111,42 @@ impl HalfCellCanvas {
                 // emit a move-to seq before writing if we've previously skipped some cells
                 if skipping {
                     skipping = false;
-                    write_move_to(&mut out, row_offset + row, col_offset + col);
+                    write_move_to(buf, row_offset + row, col_offset + col);
                 }
 
                 if let Some(top_color) = back_top {
                     if current_top.is_none_or(|c| c != top_color) {
-                        write_fg_color(&mut out, top_color);
+                        write_fg_color(buf, top_color);
                         current_top = Some(top_color);
                     };
                 } else if current_top.is_some() {
-                    write_fg_reset(&mut out);
+                    write_fg_reset(buf);
                     current_top = None;
                 };
 
                 if let Some(bottom_color) = back_bottom {
                     if current_bottom.is_none_or(|c| c != bottom_color) {
-                        write_bg_color(&mut out, bottom_color);
+                        write_bg_color(buf, bottom_color);
                         current_bottom = Some(bottom_color);
                     }
                 } else if current_bottom.is_some() {
-                    write_bg_reset(&mut out);
+                    write_bg_reset(buf);
                     current_bottom = None;
                 };
 
-                let _ = write!(&mut out, "{UPPER_HALF_CELL}");
+                let _ = write!(buf, "{UPPER_HALF_CELL}");
             }
         }
 
         self.swap_buffers();
         self.clear_back_buffer();
+    }
 
-        out
+    pub fn render(&mut self) -> String {
+        // NOTE: estimating 40 bytes worse case for a foreground+background+half-cell output
+        let mut buf = String::with_capacity(self.width() * self.height() * 40);
+        self.render_to(&mut buf);
+        buf
     }
 }
 

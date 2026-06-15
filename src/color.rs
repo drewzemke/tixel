@@ -13,6 +13,11 @@ impl From<(u8, u8, u8)> for Color {
 }
 
 impl Color {
+    pub fn from_hsl(h: f64, s: f64, l: f64) -> Self {
+        let (r, g, b) = hsl_to_rgb(h, s, l);
+        Self::Rgb(r, g, b)
+    }
+
     pub fn write_fg(&self, str: &mut String) {
         let _ = match self {
             Color::Ansi(ansi_color) => write!(str, "\x1b[{}m", ansi_color.fg_code()),
@@ -91,4 +96,25 @@ impl AnsiColor {
     const fn bg_code(&self) -> u8 {
         self.fg_code() + 10
     }
+}
+
+fn hsl_to_rgb(h: f64, s: f64, l: f64) -> (u8, u8, u8) {
+    let h = h.rem_euclid(360.);
+    let c = (1.0 - (2.0 * l - 1.0).abs()) * s;
+    let h2 = h / 60.0;
+    let x = c * (1.0 - (h2 % 2.0 - 1.0).abs());
+    let (r1, g1, b1) = match h2 as u32 {
+        0 => (c, x, 0.0),
+        1 => (x, c, 0.0),
+        2 => (0.0, c, x),
+        3 => (0.0, x, c),
+        4 => (x, 0.0, c),
+        _ => (c, 0.0, x),
+    };
+    let m = l - c / 2.0;
+    (
+        ((r1 + m) * 255.0) as u8,
+        ((g1 + m) * 255.0) as u8,
+        ((b1 + m) * 255.0) as u8,
+    )
 }

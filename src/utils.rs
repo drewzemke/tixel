@@ -3,7 +3,7 @@ use std::fmt::Write;
 use crate::color::Color;
 
 /// writes a move-to escape seq to a string buffer. NOTE: row and col are *ZERO*-based
-pub fn write_move_to(str: &mut String, row: usize, col: usize) {
+pub fn write_move_to(str: &mut String, col: usize, row: usize) {
     let _ = write!(str, "\x1b[{};{}H", row + 1, col + 1);
 }
 

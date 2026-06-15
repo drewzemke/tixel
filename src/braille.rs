@@ -13,10 +13,10 @@ use crate::{
 ///
 /// - renders to a string that the caller can write to their screen
 pub struct BrailleCanvas {
-    /// (rows, columns) in *cells*
+    /// (cols, rows) in *cells*
     dimensions: (usize, usize),
 
-    /// (row_offset, col_offset) in *cells*
+    /// (col_offset, row_offset) in *cells*
     offset: (usize, usize),
 
     /// data is per *dot*
@@ -46,11 +46,11 @@ impl BrailleCanvas {
     }
 
     pub const fn width(&self) -> usize {
-        2 * self.dimensions.1
+        2 * self.dimensions.0
     }
 
     pub const fn height(&self) -> usize {
-        4 * self.dimensions.0
+        4 * self.dimensions.1
     }
 
     /// x and y are in canvas coordinates
@@ -63,7 +63,7 @@ impl BrailleCanvas {
         let buffer_idx = y * self.width() + x;
         self.buffer[buffer_idx] = true;
 
-        let cell_idx = (y / 4) * self.dimensions.1 + (x / 2);
+        let cell_idx = (y / 4) * self.dimensions.0 + (x / 2);
         self.colors[cell_idx] = Some(color);
     }
 
@@ -96,9 +96,9 @@ impl BrailleCanvas {
 
         let mut current_color = None;
 
-        for row in 0..self.dimensions.0 {
-            write_move_to(buf, row + self.offset.0, self.offset.1);
-            for col in 0..self.dimensions.1 {
+        for row in 0..self.dimensions.1 {
+            write_move_to(buf, self.offset.0, row + self.offset.1);
+            for col in 0..self.dimensions.0 {
                 // write a color byte if the color has changed in this cell
                 let cell_color = self.colors[row * width / 2 + col];
                 if cell_color != current_color

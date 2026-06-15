@@ -56,8 +56,8 @@ fn main() -> anyhow::Result<()> {
 
     let (cols, rows) = terminal::size()?;
     let mut canvas = BrailleCanvas::new(
-        (3 * rows as usize / 4, 3 * cols as usize / 4),
-        (rows as usize / 8, cols as usize / 8),
+        (3 * cols as usize / 4, 3 * rows as usize / 4),
+        (cols as usize / 8, rows as usize / 8),
     );
 
     canvas.set_bg_color((0, 0, 0).into());

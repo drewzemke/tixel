@@ -12,10 +12,10 @@ type Buffer = Vec<Option<Color>>;
 /// - allows setting color values
 /// - renders to a string that the caller can write to their screen
 pub struct HalfCellCanvas {
-    /// (rows, columns) in *cells*
+    /// (cols, rows) in *cells*
     dimensions: (usize, usize),
 
-    /// (row_offset, col_offset) in *cells*
+    /// (col_offset, row_offset) in *cells*
     offset: (usize, usize),
 
     buffers: [Buffer; 2],
@@ -24,7 +24,7 @@ pub struct HalfCellCanvas {
 
 impl HalfCellCanvas {
     pub fn new(dimensions: (usize, usize), offset: (usize, usize)) -> Self {
-        let (rows, cols) = dimensions;
+        let (cols, rows) = dimensions;
 
         let pixels = vec![None; 2 * rows * cols];
         let buffers = [pixels.clone(), pixels];
@@ -38,11 +38,11 @@ impl HalfCellCanvas {
     }
 
     pub fn width(&self) -> usize {
-        self.dimensions.1
+        self.dimensions.0
     }
 
     pub fn height(&self) -> usize {
-        2 * self.dimensions.0
+        2 * self.dimensions.1
     }
 
     /// returns (front, back)
@@ -68,7 +68,7 @@ impl HalfCellCanvas {
     ///
     /// ignores out-of-bounds input
     pub fn set_color(&mut self, x: usize, y: usize, color: Color) {
-        if x > self.dimensions.1 || y > 2 * self.dimensions.0 {
+        if x > self.dimensions.0 || y > 2 * self.dimensions.1 {
             return;
         }
 
@@ -86,20 +86,20 @@ impl HalfCellCanvas {
     }
 
     pub fn render_to(&mut self, buf: &mut String) {
-        let (row_offset, col_offset) = self.offset;
+        let (col_offset, row_offset) = self.offset;
         let width = self.width();
 
         let mut current_top: Option<Color> = None;
         let mut current_bottom: Option<Color> = None;
 
-        let (rows, cols) = self.dimensions;
+        let (cols, rows) = self.dimensions;
 
         let (front, back) = self.buffers();
 
         let mut skipping;
 
         for row in 0..rows {
-            write_move_to(buf, row_offset + row, col_offset);
+            write_move_to(buf, col_offset, row_offset + row);
             skipping = true;
 
             for col in 0..cols {
@@ -117,7 +117,7 @@ impl HalfCellCanvas {
                 // emit a move-to seq before writing if we've previously skipped some cells
                 if skipping {
                     skipping = false;
-                    write_move_to(buf, row_offset + row, col_offset + col);
+                    write_move_to(buf, col_offset + col, row_offset + row);
                 }
 
                 if let Some(top_color) = back_top {
@@ -162,7 +162,7 @@ mod tests {
 
     #[test]
     fn render_only_outputs_changed_pixels() {
-        let mut canvas = HalfCellCanvas::new((1, 6), (0, 0));
+        let mut canvas = HalfCellCanvas::new((6, 1), (0, 0));
 
         // fill the canvas
         for x in 0..canvas.width() {
@@ -186,12 +186,12 @@ mod tests {
 
     #[test]
     fn set_color_ignores_out_of_bounds_input() {
-        let mut canvas = HalfCellCanvas::new((40, 20), (0, 0));
+        let mut canvas = HalfCellCanvas::new((20, 40), (0, 0));
 
         // shouldn't panic
         canvas.set_color(25, 10, Color::Rgb(0, 0, 0));
-        canvas.set_color(10, 45, Color::Rgb(0, 0, 0));
-        canvas.set_color(25, 45, Color::Rgb(0, 0, 0));
+        canvas.set_color(10, 90, Color::Rgb(0, 0, 0));
+        canvas.set_color(25, 90, Color::Rgb(0, 0, 0));
 
         // no colors should have been set
         let (_, buf) = canvas.buffers();

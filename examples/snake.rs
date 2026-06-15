@@ -118,7 +118,7 @@ impl SnakeGame {
 }
 
 const TARGET_FRAME_TIME: Duration = Duration::from_millis(50);
-const GAME_DIMS: (usize, usize) = (15, 60);
+const GAME_DIMS: (usize, usize) = (60, 15);
 
 fn main() -> anyhow::Result<()> {
     let mut stdout = std::io::stdout();
@@ -127,7 +127,7 @@ fn main() -> anyhow::Result<()> {
     let rows = rows as usize;
     let cols = cols as usize;
 
-    if rows < GAME_DIMS.0 || cols < GAME_DIMS.1 {
+    if rows < GAME_DIMS.1 || cols < GAME_DIMS.0 {
         eprintln!(
             "Error: terminal window too small.\nYour terminal window is {rows} rows x {cols} cols.\nMinimum dimensions are {} rows x {} cols.",
             GAME_DIMS.0, GAME_DIMS.1
@@ -136,10 +136,10 @@ fn main() -> anyhow::Result<()> {
     }
 
     // center the game area in the screen
-    let offset_x = (cols - GAME_DIMS.1) / 2;
-    let offset_y = (rows - GAME_DIMS.0) / 2;
+    let offset_x = (cols - GAME_DIMS.0) / 2;
+    let offset_y = (rows - GAME_DIMS.1) / 2;
 
-    let mut canvas = HalfCellCanvas::new(GAME_DIMS, (offset_y, offset_x));
+    let mut canvas = HalfCellCanvas::new(GAME_DIMS, (offset_x, offset_y));
 
     let height = canvas.height();
     let width = canvas.width();

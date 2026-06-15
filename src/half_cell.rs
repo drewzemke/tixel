@@ -65,7 +65,13 @@ impl HalfCellCanvas {
 
     /// x and y are in canvas space, not terminal space
     /// x is distance from left edge, y is distance from top
+    ///
+    /// ignores out-of-bounds input
     pub fn set_color(&mut self, x: usize, y: usize, color: Color) {
+        if x > self.dimensions.1 || y > 2 * self.dimensions.0 {
+            return;
+        }
+
         let idx = y * self.width() + x;
         let (_, back) = self.buffers();
         back[idx] = Some(color)
@@ -176,5 +182,19 @@ mod tests {
         // render again and look for a "move" escape seq
         let output = canvas.render();
         assert!(output.contains(&format!("\x1b[{};{}H", 1, canvas.width())));
+    }
+
+    #[test]
+    fn set_color_ignores_out_of_bounds_input() {
+        let mut canvas = HalfCellCanvas::new((40, 20), (0, 0));
+
+        // shouldn't panic
+        canvas.set_color(25, 10, Color::Rgb(0, 0, 0));
+        canvas.set_color(10, 45, Color::Rgb(0, 0, 0));
+        canvas.set_color(25, 45, Color::Rgb(0, 0, 0));
+
+        // no colors should have been set
+        let (_, buf) = canvas.buffers();
+        assert!(buf.iter().all(|c| c.is_none()));
     }
 }

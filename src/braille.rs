@@ -25,6 +25,9 @@ pub struct BrailleCanvas {
     /// data is per *cell*
     colors: Vec<Option<Color>>,
 
+    /// data is per *cell*
+    dirty: Vec<bool>,
+
     /// optional color used for the entire canvas background
     bg_color: Option<Color>,
 
@@ -39,12 +42,14 @@ impl BrailleCanvas {
 
         let buffer = vec![false; 8 * rows * cols];
         let colors = vec![None; rows * cols];
+        let dirty = vec![true; rows * cols];
 
         BrailleCanvas {
             dimensions,
             offset,
             buffer,
             colors,
+            dirty,
             bg_color: None,
             clear_on_render: true,
         }
@@ -104,19 +109,12 @@ impl BrailleCanvas {
         }
 
         let mut current_color = None;
+        let mut skipping;
 
         for row in 0..self.dimensions.1 {
-            write_move_to(buf, self.offset.0, row + self.offset.1);
-            for col in 0..self.dimensions.0 {
-                // write a color byte if the color has changed in this cell
-                let cell_color = self.colors[row * width / 2 + col];
-                if cell_color != current_color
-                    && let Some(cell_color) = cell_color
-                {
-                    write_fg_color(buf, cell_color);
-                    current_color = Some(cell_color);
-                }
+            skipping = true;
 
+            for col in 0..self.dimensions.0 {
                 // figure out which dots are set inside this cell
                 let mut byte = 0;
 
@@ -155,9 +153,34 @@ impl BrailleCanvas {
                     byte |= 1 << 7;
                 }
 
+                // if there are no particles to draw and this cell was *not*
+                // rendered to last render, we can skip
+                let cell_idx = row * width / 2 + col;
+                if byte == 0 && !self.dirty[cell_idx] {
+                    skipping = true;
+                    continue;
+                }
+
+                // emit a move-to seq before writing if we've previously skipped some cells
+                if skipping {
+                    skipping = false;
+                    write_move_to(buf, self.offset.0 + col, self.offset.1 + row);
+                }
+
+                // write a color byte if the color has changed in this cell
+                let cell_color = self.colors[cell_idx];
+                if cell_color != current_color
+                    && let Some(cell_color) = cell_color
+                {
+                    write_fg_color(buf, cell_color);
+                    current_color = Some(cell_color);
+                }
+
                 if byte == 0 {
+                    self.dirty[cell_idx] = false;
                     buf.push(' ');
                 } else {
+                    self.dirty[cell_idx] = true;
                     buf.push(char::from_u32(0x2800 | byte as u32).unwrap());
                 }
             }

@@ -27,6 +27,10 @@ pub struct BrailleCanvas {
 
     /// optional color used for the entire canvas background
     bg_color: Option<Color>,
+
+    /// whether or not the buffer gets cleared after each render
+    /// defaults to true
+    clear_on_render: bool,
 }
 
 impl BrailleCanvas {
@@ -42,6 +46,7 @@ impl BrailleCanvas {
             buffer,
             colors,
             bg_color: None,
+            clear_on_render: true,
         }
     }
 
@@ -85,6 +90,10 @@ impl BrailleCanvas {
     fn clear_buffer(&mut self) {
         self.buffer.fill(false);
         self.colors.fill(None);
+    }
+
+    pub fn set_clear_on_render(&mut self, clear: bool) {
+        self.clear_on_render = clear;
     }
 
     pub fn render_to(&mut self, buf: &mut String) {
@@ -155,7 +164,9 @@ impl BrailleCanvas {
         }
 
         // clear to prepare the next render
-        self.clear_buffer();
+        if self.clear_on_render {
+            self.clear_buffer();
+        }
     }
 
     pub fn render(&mut self) -> String {

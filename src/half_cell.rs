@@ -4,7 +4,8 @@ use crate::utils::{write_bg_color, write_bg_reset, write_fg_color, write_fg_rese
 
 pub use crate::color::Color;
 
-const UPPER_HALF_CELL: char = '▀';
+const UPPER_HALF: char = '▀';
+const LOWER_HALF: char = '▄';
 
 type Buffer = Vec<Option<Color>>;
 
@@ -20,6 +21,10 @@ pub struct HalfCellCanvas {
 
     buffers: [Buffer; 2],
     front_idx: usize,
+
+    /// tracks the terminal's current fg/bg color state across renders
+    current_top: Option<Color>,
+    current_bottom: Option<Color>,
 }
 
 impl HalfCellCanvas {
@@ -34,6 +39,8 @@ impl HalfCellCanvas {
             offset,
             buffers,
             front_idx: 0,
+            current_top: None,
+            current_bottom: None,
         }
     }
 
@@ -83,14 +90,16 @@ impl HalfCellCanvas {
         self.clear_back_buffer();
         self.swap_buffers();
         self.clear_back_buffer();
+        self.current_top = None;
+        self.current_bottom = None;
     }
 
     pub fn render_to(&mut self, buf: &mut String) {
         let (col_offset, row_offset) = self.offset;
         let width = self.width();
 
-        let mut current_top: Option<Color> = None;
-        let mut current_bottom: Option<Color> = None;
+        let mut current_top = self.current_top;
+        let mut current_bottom = self.current_bottom;
 
         let (cols, rows) = self.dimensions;
 
@@ -120,29 +129,45 @@ impl HalfCellCanvas {
                     write_move_to(buf, col_offset + col, row_offset + row);
                 }
 
-                if let Some(top_color) = back_top {
-                    if current_top.is_none_or(|c| c != top_color) {
-                        write_fg_color(buf, top_color);
-                        current_top = Some(top_color);
-                    };
-                } else if current_top.is_some() {
-                    write_fg_reset(buf);
-                    current_top = None;
+                let desired_fg = back_top.or(back_bottom);
+                let desired_bg = back_top.and(back_bottom);
+                let ch = if back_top.is_some() {
+                    UPPER_HALF
+                } else if back_bottom.is_some() {
+                    LOWER_HALF
+                } else {
+                    ' '
                 };
 
-                if let Some(bottom_color) = back_bottom {
-                    if current_bottom.is_none_or(|c| c != bottom_color) {
-                        write_bg_color(buf, bottom_color);
-                        current_bottom = Some(bottom_color);
+                match desired_fg {
+                    Some(fg) if current_top.is_none_or(|c| c != fg) => {
+                        write_fg_color(buf, fg);
+                        current_top = Some(fg);
                     }
-                } else if current_bottom.is_some() {
-                    write_bg_reset(buf);
-                    current_bottom = None;
-                };
+                    None if current_top.is_some() => {
+                        write_fg_reset(buf);
+                        current_top = None;
+                    }
+                    _ => {}
+                }
+                match desired_bg {
+                    Some(bg) if current_bottom.is_none_or(|c| c != bg) => {
+                        write_bg_color(buf, bg);
+                        current_bottom = Some(bg);
+                    }
+                    None if current_bottom.is_some() => {
+                        write_bg_reset(buf);
+                        current_bottom = None;
+                    }
+                    _ => {}
+                }
 
-                let _ = write!(buf, "{UPPER_HALF_CELL}");
+                let _ = write!(buf, "{ch}");
             }
         }
+
+        self.current_top = current_top;
+        self.current_bottom = current_bottom;
 
         self.swap_buffers();
         self.clear_back_buffer();
@@ -182,6 +207,42 @@ mod tests {
         // render again and look for a "move" escape seq
         let output = canvas.render();
         assert!(output.contains(&format!("\x1b[{};{}H", 1, canvas.width())));
+    }
+
+    #[test]
+    fn cleared_cell_renders_space_not_half_block() {
+        let mut canvas = HalfCellCanvas::new((3, 1), (0, 0));
+
+        // frame 1: color one cell (top pixel only)
+        canvas.set_color(1, 0, Color::Rgb(255, 0, 0));
+        let _ = canvas.render();
+
+        // frame 2: don't set that cell, so it should be cleared
+        let output = canvas.render();
+
+        // both halves are None, so it should emit a space (not ▀)
+        assert!(
+            output.contains(' '),
+            "expected space for fully cleared cell, got: {output:?}"
+        );
+        assert!(
+            !output.contains('▀'),
+            "should not contain ▀ for fully cleared cell, got: {output:?}"
+        );
+    }
+
+    #[test]
+    fn only_bottom_colored_uses_lower_half_block() {
+        let mut canvas = HalfCellCanvas::new((3, 1), (0, 0));
+
+        // color only the bottom pixel of cell at col 1
+        canvas.set_color(1, 1, Color::Rgb(0, 255, 0));
+        let output = canvas.render();
+
+        assert!(
+            output.contains('▄'),
+            "expected ▄ when only bottom is colored, got: {output:?}"
+        );
     }
 
     #[test]

@@ -47,8 +47,8 @@ impl Particle {
     }
 }
 
-const POLL_TIME: Duration = Duration::from_millis(10);
-const NUM_PARTICLES: usize = 500;
+const POLL_TIME: Duration = Duration::ZERO;
+const NUM_PARTICLES: usize = 100;
 const VEL_RANGE: std::ops::Range<f64> = 10.0..15.0;
 
 fn main() -> anyhow::Result<()> {
@@ -86,6 +86,9 @@ fn main() -> anyhow::Result<()> {
         .collect();
 
     let mut time = Instant::now();
+    let mut frame_count = 0u32;
+    let mut fps_timer = Instant::now();
+    let mut fps = 0.0f64;
 
     loop {
         if event::poll(POLL_TIME)?
@@ -109,6 +112,17 @@ fn main() -> anyhow::Result<()> {
 
             let output = canvas.render();
             let _ = stdout.write(output.as_bytes());
+
+            frame_count += 1;
+            let elapsed = fps_timer.elapsed();
+            if elapsed >= Duration::from_secs(1) {
+                fps = frame_count as f64 / elapsed.as_secs_f64();
+                frame_count = 0;
+                fps_timer = Instant::now();
+            }
+
+            write!(stdout, "\x1b[{};1H\x1b[0m{:.0} fps", rows, fps)?;
+            stdout.flush()?;
         }
     }
 

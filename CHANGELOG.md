@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1](https://github.com/drewzemke/tixel/compare/v0.3.0...v0.3.1) - 2026-06-21
+
+### Added
+
+- *(braille)* allow disabling clearing after renderer
+
+### Fixed
+
+- *(half-cell)* correctly render scenes without all cells filled
+
+### Other
+
+- *(braille)* track dirty cells and skip rendering to unoccupied ones
+- *(example)* add fps counter to particles example
+
 ## [0.3.0](https://github.com/drewzemke/tixel/compare/v0.2.1...v0.3.0) - 2026-06-15
 
 ### Added

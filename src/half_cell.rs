@@ -21,10 +21,6 @@ pub struct HalfCellCanvas {
 
     buffers: [Buffer; 2],
     front_idx: usize,
-
-    /// tracks the terminal's current fg/bg color state across renders
-    current_top: Option<Color>,
-    current_bottom: Option<Color>,
 }
 
 impl HalfCellCanvas {
@@ -39,8 +35,6 @@ impl HalfCellCanvas {
             offset,
             buffers,
             front_idx: 0,
-            current_top: None,
-            current_bottom: None,
         }
     }
 
@@ -90,16 +84,21 @@ impl HalfCellCanvas {
         self.clear_back_buffer();
         self.swap_buffers();
         self.clear_back_buffer();
-        self.current_top = None;
-        self.current_bottom = None;
     }
 
     pub fn render_to(&mut self, buf: &mut String) {
         let (col_offset, row_offset) = self.offset;
         let width = self.width();
 
-        let mut current_top = self.current_top;
-        let mut current_bottom = self.current_bottom;
+        // reset the terminal's color state at the start of every frame so we
+        // never rely on leftover fg/bg — whether left by our own previous
+        // frame or by anyone else writing between renders. this keeps
+        // `current_*` an accurate model of the terminal and lets cleared
+        // cells fall back to the terminal's own background.
+        write_fg_reset(buf);
+        write_bg_reset(buf);
+        let mut current_top: Option<Color> = None;
+        let mut current_bottom: Option<Color> = None;
 
         let (cols, rows) = self.dimensions;
 
@@ -165,9 +164,6 @@ impl HalfCellCanvas {
                 let _ = write!(buf, "{ch}");
             }
         }
-
-        self.current_top = current_top;
-        self.current_bottom = current_bottom;
 
         self.swap_buffers();
         self.clear_back_buffer();
@@ -257,5 +253,70 @@ mod tests {
         // no colors should have been set
         let (_, buf) = canvas.buffers();
         assert!(buf.iter().all(|c| c.is_none()));
+    }
+
+    #[test]
+    fn re_establishes_color_each_render() {
+        // regression: the canvas must not assume it still owns the terminal's
+        // color state across renders. if something else writes to the terminal
+        // between renders (eg. a hud/score line), a cell can't skip its color
+        // escape just because the previous frame happened to end on that color.
+        let mut canvas = HalfCellCanvas::new((3, 1), (0, 0));
+        let green = Color::Rgb(140, 240, 140);
+        let dark = Color::Rgb(20, 20, 20);
+
+        // frame 1: fill dark, end on green in the last cell
+        for x in 0..3 {
+            canvas.set_color(x, 0, dark);
+            canvas.set_color(x, 1, dark);
+        }
+        canvas.set_color(2, 0, green);
+        canvas.set_color(2, 1, green);
+        let _ = canvas.render();
+
+        // frame 2: a different cell becomes green
+        for x in 0..3 {
+            canvas.set_color(x, 0, dark);
+            canvas.set_color(x, 1, dark);
+        }
+        canvas.set_color(0, 0, green);
+        canvas.set_color(0, 1, green);
+        let output = canvas.render();
+
+        // the newly-green cell must carry its own fg escape rather than rely
+        // on leftover state from the previous frame
+        assert!(
+            output.contains("38;2;140;240;140"),
+            "expected the green cell to re-emit its fg color, got: {output:?}"
+        );
+    }
+
+    #[test]
+    fn cleared_cell_falls_back_to_terminal_bg() {
+        // regression: a cleared cell must reset the bg so it shows the
+        // terminal's own background, not the leftover bg from a previously
+        // drawn cell. without this you get a trail wherever colored cells
+        // used to be (visible when the caller doesn't paint a background).
+        let mut canvas = HalfCellCanvas::new((3, 1), (0, 0));
+        let green = Color::Rgb(140, 240, 140);
+
+        // frame 1: a solid green cell at col 0 leaves the terminal bg green
+        canvas.set_color(0, 0, green);
+        canvas.set_color(0, 1, green);
+        let _ = canvas.render();
+
+        // frame 2: col 0 is vacated (no background fill), col 1 becomes green
+        canvas.set_color(1, 0, green);
+        canvas.set_color(1, 1, green);
+        let output = canvas.render();
+
+        // the vacated cell's space must sit on a reset bg, not leftover green
+        let space_idx = output
+            .find(' ')
+            .expect("expected a space for the cleared cell");
+        assert!(
+            output[..space_idx].contains("\x1b[49m"),
+            "expected a bg reset before the cleared cell, got: {output:?}"
+        );
     }
 }
